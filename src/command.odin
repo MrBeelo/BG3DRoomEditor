@@ -7,7 +7,7 @@ import "core:fmt"
 import "core:os"
 import "core:encoding/json"
 
-DEF_PATH :: "res/data/"
+DEF_PATH :: "res/rooms/"
 
 cmd_text := ""
 cmd_menu_on := false
@@ -25,7 +25,6 @@ UpdateCommandMenu :: proc() {
 		if(rl.IsKeyPressed(.ENTER)) {
 			append(&past_texts, cmd_text)
 			past_text_index = -1
-			was_alloc: bool
 			args := strings.split(cmd_text, " ")
 			if(len(args) == 0) do return
 			fmt.printf("GAME: Recieved command with arguments: %v\n", args)
@@ -107,7 +106,6 @@ ExportRoom :: proc(path: string) {
 ImportRoom :: proc(path: string) {
 	BareBlock :: struct{pos: rl.Vector3, scale: rl.Vector3}
 	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, end_point: rl.Vector3}
-	bare_room: BareRoom
 	data, err := os.read_entire_file(path, context.allocator)
 	if(err != nil) {
 		fmt.printf("GAME: OS read file error! (path: %s)\n", path)
