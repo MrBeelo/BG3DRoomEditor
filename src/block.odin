@@ -4,13 +4,15 @@ import rl "vendor:raylib"
 
 room: Room
 
-Block :: struct { pos: rl.Vector3, scale: rl.Vector3, selected: bool }
+BlockType :: enum { WALL, TRIGGER }
+Block :: struct { pos: rl.Vector3, scale: rl.Vector3, type: BlockType, selected: bool }
 Room :: struct { blocks: [dynamic]Block, end_point: rl.Vector3 }
 
-NewBlock :: proc(pos: rl.Vector3, scale: rl.Vector3) -> Block { return Block{pos, scale, false} }
-AppendBlock :: proc(pos: rl.Vector3 = {}, scale: rl.Vector3 = {1, 1, 1}) { append(&room.blocks, NewBlock(pos, scale)) }
+NewBlock :: proc(pos: rl.Vector3, scale: rl.Vector3, type := BlockType.WALL) -> Block { return Block{pos, scale, type, false} }
+AppendBlock :: proc(pos: rl.Vector3 = {}, scale: rl.Vector3 = {1, 1, 1}, type := BlockType.WALL) { append(&room.blocks, NewBlock(pos, scale, type)) }
 DrawBlocks :: proc() { for block in room.blocks do DrawBlock(block) }
-DrawBlock :: proc(block: Block) { rl.DrawModelEx(block_model, block.pos, {}, 0, block.scale, {190, 253, 255, 255} if(block.selected) else rl.WHITE) }
+GetBlockOpacity :: proc(block: Block) -> u8 { return 255 if(block.type == .WALL) else 150 }
+DrawBlock :: proc(block: Block) { rl.DrawModelEx(block_model, block.pos, {}, 0, block.scale, {190, 253, 255, GetBlockOpacity(block)} if(block.selected) else {255, 255, 255, GetBlockOpacity(block)}) }
 
 GetSelectedBlocks :: proc() -> [dynamic]^Block {
 	selected_blocks: [dynamic]^Block
@@ -38,9 +40,11 @@ DrawSelectedBlockInfo :: proc() {
 	if(len(GetSelectedBlocks()) != 1) do return
 	FONT_SIZE :: 48
 	BUFFER :: 10
-	block := room.blocks[0]
+	block: Block
+	for sel_block in GetSelectedBlocks() do block = sel_block^
 	y_offset: f32 = 60 if cmd_menu_on else 0
-	DrawText(string(format("SELECTED BLOCK DATA:")), {10, SCREEN_SIZE.y - (BUFFER + FONT_SIZE) * 3 - y_offset}, FONT_SIZE, 2, rl.LIGHTGRAY)
+	DrawText(string(format("SELECTED BLOCK DATA:")), {10, SCREEN_SIZE.y - (BUFFER + FONT_SIZE) * 4 - y_offset}, FONT_SIZE, 2, rl.LIGHTGRAY)
+	DrawText(string(format("TYPE: %v", block.type)), {10, SCREEN_SIZE.y - (BUFFER + FONT_SIZE) * 3 - y_offset}, FONT_SIZE, 2, rl.LIGHTGRAY)
 	DrawText(string(format("POS: [%.2f, %.2f, %.2f]", block.pos.x, block.pos.y, block.pos.z)), {10, SCREEN_SIZE.y - (BUFFER + FONT_SIZE) * 2 - y_offset}, FONT_SIZE, 2, rl.LIGHTGRAY)
 	DrawText(string(format("SCALE: [%.2f, %.2f, %.2f]", block.scale.x, block.scale.y, block.scale.z)), {10, SCREEN_SIZE.y - (BUFFER + FONT_SIZE) - y_offset}, FONT_SIZE, 2, rl.LIGHTGRAY)
 }

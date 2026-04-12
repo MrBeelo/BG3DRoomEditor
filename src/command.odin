@@ -30,7 +30,8 @@ UpdateCommandMenu :: proc() {
 			fmt.printf("GAME: Recieved command with arguments: %v\n", args)
 			
 			switch(args[0]) {
-				case "cube": AddCube(args)
+				case "cube", "wall": AddBlock(args, .WALL)
+				case "trigger": AddBlock(args, .TRIGGER)
 				case "export": ExportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
 				case "import": ImportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
 				case "move": HandleBlockData(args, .MOVE)
@@ -69,19 +70,19 @@ UpdateCommandMenu :: proc() {
 	if(rl.IsKeyPressed(.SLASH)) do cmd_menu_on = !cmd_menu_on
 }
 
-AddCube :: proc(args: []string) {
+AddBlock :: proc(args: []string, block_type: BlockType) {
 	switch(len(args)) {
-		case 1: AppendBlock()
+		case 1: AppendBlock(type = block_type)
 		case 4: {
 			vec, ok := ParseVector(args[1:], 3)
-			if(ok) do AppendBlock(vec)
+			if(ok) do AppendBlock(vec, type = block_type)
 		}
 		case 7: {
 			args1 := args[1:4]
 			args2 := args[4:]
 			vec1, ok1 := ParseVector(args1, 3)
 			vec2, ok2 := ParseVector(args2, 3)
-			if(ok1 && ok2) do AppendBlock(vec1, vec2)
+			if(ok1 && ok2) do AppendBlock(vec1, vec2, block_type)
 		}
 	}
 }
@@ -89,9 +90,10 @@ AddCube :: proc(args: []string) {
 ExportRoom :: proc(path: string) {
 	options := json.Marshal_Options{.JSON, true, false, 0, false, false, false, false, false, 0, false, false}
 	BareBlock :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, end_point: rl.Vector3}
+	BareTrigger :: struct{pos: rl.Vector3, scale: rl.Vector3}
+	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, bare_triggers: [dynamic]BareTrigger, end_point: rl.Vector3}
 	bare_room: BareRoom
-	for block in room.blocks do append(&bare_room.bare_blocks, BareBlock{block.pos, block.scale})
+	for block in room.blocks do if(block.type == .WALL) do append(&bare_room.bare_blocks, BareBlock{block.pos, block.scale}); else do append(&bare_room.bare_triggers, BareTrigger{block.pos, block.scale})
 	bare_room.end_point = room.end_point
 	data, err := json.marshal(bare_room, options)
 	if(err != nil) {
@@ -105,7 +107,8 @@ ExportRoom :: proc(path: string) {
 
 ImportRoom :: proc(path: string) {
 	BareBlock :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, end_point: rl.Vector3}
+	BareTrigger :: struct{pos: rl.Vector3, scale: rl.Vector3}
+	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, bare_triggers: [dynamic]BareTrigger, end_point: rl.Vector3}
 	data, err := os.read_entire_file(path, context.allocator)
 	if(err != nil) {
 		fmt.printf("GAME: OS read file error! (path: %s)\n", path)
@@ -118,7 +121,8 @@ ImportRoom :: proc(path: string) {
 		return
 	}
 	clear(&room.blocks)
-	for block in new_room.bare_blocks do AppendBlock(block.pos, block.scale)
+	for block in new_room.bare_blocks do AppendBlock(block.pos, block.scale, .WALL)
+	for trigger in new_room.bare_triggers do AppendBlock(trigger.pos, trigger.scale, .TRIGGER)
 	room.end_point = new_room.end_point
 	fmt.printf("GAME: Imported from %s\n", path)
 }

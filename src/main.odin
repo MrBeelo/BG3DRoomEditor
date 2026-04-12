@@ -41,7 +41,7 @@ main :: proc() {
         DrawCommandMenu()
         
         DrawText("Press / to open command line!", {10, 10}, 48, 2, rl.LIGHTGRAY)
-        DrawText("BB3D Room Editor v1.0", {10, 70}, 48, 2, rl.LIGHTGRAY)
+        DrawText("BB3D Room Editor v1.1", {10, 70}, 48, 2, rl.LIGHTGRAY)
         DrawText(string(format("CAMERA POS: [%.2f, %.2f, %.2f]", pos.x, pos.y, pos.z)), {10, 130}, 48, 2, rl.LIGHTGRAY)
         DrawText(string(format("ENDPOINT POS: [%.2f, %.2f, %.2f]", room.end_point.x, room.end_point.y, room.end_point.z)), {10, 190}, 48, 2, rl.LIGHTGRAY)
         DrawSelectedBlockInfo()
