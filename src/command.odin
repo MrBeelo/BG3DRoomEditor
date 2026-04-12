@@ -37,7 +37,7 @@ UpdateCommandMenu :: proc() {
 				case "move": HandleBlockData(args, .MOVE)
 				case "resize": HandleBlockData(args, .RESIZE)
 				case "delete": #reverse for block, index in room.blocks do if(block.selected) do unordered_remove(&room.blocks, index)
-				case "duplicate": #reverse for block in room.blocks do AppendBlock(block.pos, block.scale)
+				case "duplicate": #reverse for block in GetSelectedBlocks() do AppendBlock(block.pos, block.scale)
 				case "endpoint": HandleEndPoint(args)
 				case "select": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = true
 				case "deselect": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = false
