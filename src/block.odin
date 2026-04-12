@@ -27,12 +27,20 @@ GetBlockBoundingBox :: proc(block: Block) -> rl.BoundingBox {
 
 UpdateSelectedBlocks :: proc() {
 	ray := rl.GetScreenToWorldRay({SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2}, camera)
+	closest_dist := f32(21)
+	closest_block_index := int(-1) 
+	
 	#reverse for &block, index in room.blocks {
+		if(block.selected && rl.IsKeyPressed(.DELETE)) do unordered_remove(&room.blocks, index)
 		box := GetBlockBoundingBox(block)
 		coll := rl.GetRayCollisionBox(ray, box)
-		if(coll.hit && coll.distance < 20 && rl.IsMouseButtonPressed(.LEFT)) do block.selected = !block.selected
-		if(block.selected && rl.IsKeyPressed(.DELETE)) do unordered_remove(&room.blocks, index)
+		if(coll.hit && coll.distance < closest_dist) { 
+			closest_dist = coll.distance
+			closest_block_index = index
+		}
 	}
+	
+	if(rl.IsMouseButtonPressed(.LEFT) && closest_block_index >= 0) do room.blocks[closest_block_index].selected = !room.blocks[closest_block_index].selected
 }
 
 DrawSelectedBlocks :: proc() { for block in GetSelectedBlocks() do rl.DrawCubeWiresV(block.pos, block.scale + 0.04, rl.RED) }
