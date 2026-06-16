@@ -14,7 +14,7 @@ cmd_menu_on := false
 past_texts: [dynamic]string
 past_text_index: int
 
-OperationType :: enum{ MOVE, RESIZE }
+OperationType :: enum{ MOVE, ROTATE, RESIZE }
 
 UpdateCommandMenu :: proc() {
 	if(cmd_menu_on) {
@@ -30,14 +30,15 @@ UpdateCommandMenu :: proc() {
 			fmt.printf("GAME: Recieved command with arguments: %v\n", args)
 			
 			switch(args[0]) {
-				case "cube", "wall": AddBlock(args, .WALL)
-				case "trigger": AddBlock(args, .TRIGGER)
+				case "cube", "wall": AppendBlock({}, {}, 1, .WALL)
+				case "trigger": AppendBlock({}, {}, 1, .TRIGGER)
 				case "export": ExportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
 				case "import": ImportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
 				case "move": HandleBlockData(args, .MOVE)
+				case "rotate": HandleBlockData(args, .ROTATE)
 				case "resize": HandleBlockData(args, .RESIZE)
 				case "delete": #reverse for block, index in room.blocks do if(block.selected) do unordered_remove(&room.blocks, index)
-				case "duplicate": #reverse for block in GetSelectedBlocks() do AppendBlock(block.pos, block.scale)
+				case "duplicate": #reverse for block in GetSelectedBlocks() do AppendBlock(block.pos, block.rot, block.size, block.type)
 				case "endpoint": HandleEndPoint(args)
 				case "select": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = true
 				case "deselect": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = false
@@ -70,32 +71,14 @@ UpdateCommandMenu :: proc() {
 	if(rl.IsKeyPressed(.SLASH)) do cmd_menu_on = !cmd_menu_on
 }
 
-AddBlock :: proc(args: []string, block_type: BlockType) {
-	switch(len(args)) {
-		case 1: AppendBlock(type = block_type)
-		case 4: {
-			vec, ok := ParseVector(args[1:], 3)
-			if(ok) do AppendBlock(vec, type = block_type)
-		}
-		case 7: {
-			args1 := args[1:4]
-			args2 := args[4:]
-			vec1, ok1 := ParseVector(args1, 3)
-			vec2, ok2 := ParseVector(args2, 3)
-			if(ok1 && ok2) do AppendBlock(vec1, vec2, block_type)
-		}
-	}
-}
-
 ExportRoom :: proc(path: string) {
 	options := json.Marshal_Options{.JSON, true, false, 0, false, false, false, false, false, 0, false, false}
-	BareBlock :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareTrigger :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, bare_triggers: [dynamic]BareTrigger, end_point: rl.Vector3}
-	bare_room: BareRoom
-	for block in room.blocks do if(block.type == .WALL) do append(&bare_room.bare_blocks, BareBlock{block.pos, block.scale}); else do append(&bare_room.bare_triggers, BareTrigger{block.pos, block.scale})
-	bare_room.end_point = room.end_point
-	data, err := json.marshal(bare_room, options)
+	JCube :: struct{pos: rl.Vector3, rot: rl.Vector3, size: rl.Vector3, type: BlockType}
+	JRoom :: struct{jcubes: [dynamic]JCube, end_point: rl.Vector3}
+	jroom: JRoom
+	for block in room.blocks do append(&jroom.jcubes, JCube{block.pos, block.rot, block.size, block.type})
+	jroom.end_point = room.end_point
+	data, err := json.marshal(jroom, options)
 	if(err != nil) {
 		fmt.printf("GAME: Json marshal error! (path: %s)\n", path)
 		return
@@ -106,31 +89,32 @@ ExportRoom :: proc(path: string) {
 }
 
 ImportRoom :: proc(path: string) {
-	BareBlock :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareTrigger :: struct{pos: rl.Vector3, scale: rl.Vector3}
-	BareRoom :: struct{bare_blocks: [dynamic]BareBlock, bare_triggers: [dynamic]BareTrigger, end_point: rl.Vector3}
+	JCube :: struct{pos: rl.Vector3, rot: rl.Vector3, size: rl.Vector3, type: BlockType}
+	JRoom :: struct{jcubes: [dynamic]JCube, end_point: rl.Vector3}
 	data, err := os.read_entire_file(path, context.allocator)
 	if(err != nil) {
 		fmt.printf("GAME: OS read file error! (path: %s)\n", path)
 		return
 	}
-	new_room: BareRoom
-	unm_err := json.unmarshal(data, &new_room)
+	jroom: JRoom
+	unm_err := json.unmarshal(data, &jroom)
 	if(unm_err != nil) {
 		fmt.printf("GAME: Json unmarshal error! (path: %s)\n", path)
 		return
 	}
 	clear(&room.blocks)
-	for block in new_room.bare_blocks do AppendBlock(block.pos, block.scale, .WALL)
-	for trigger in new_room.bare_triggers do AppendBlock(trigger.pos, trigger.scale, .TRIGGER)
-	room.end_point = new_room.end_point
+	//for block in new_room.bare_blocks do AppendBlock(block.pos, block.scale, .WALL)
+	//for trigger in new_room.bare_triggers do AppendBlock(trigger.pos, trigger.scale, .TRIGGER)
+	for jcube in jroom.jcubes do AppendBlock(jcube.pos, jcube.rot, jcube.size, jcube.type)
+	room.end_point = jroom.end_point
 	fmt.printf("GAME: Imported from %s\n", path)
 }
 
 MoveBlock :: proc(block: ^Block, amount: rl.Vector3, add: bool) { if(add) do block.pos += amount; else do block.pos = amount }
+RotateBlock :: proc(block: ^Block, amount: rl.Vector3, add: bool) { if(add) do block.rot += amount; else do block.rot = amount }
 ResizeBlock :: proc(block: ^Block, amount: rl.Vector3, add: bool) { 
-	if(add && block.scale.x + amount.x >= 0 && block.scale.y + amount.y >= 0 && block.scale.z + amount.z >= 0) do block.scale += amount
-	if(!add && amount.x >= 0 && amount.y >= 0 && amount.z >= 0) do block.scale = amount
+	if(add && block.size.x + amount.x >= 0 && block.size.y + amount.y >= 0 && block.size.z + amount.z >= 0) do block.size += amount
+	if(!add && amount.x >= 0 && amount.y >= 0 && amount.z >= 0) do block.size = amount
 }
 
 HandleBlockData :: proc(args: []string, op: OperationType) {
@@ -138,6 +122,7 @@ HandleBlockData :: proc(args: []string, op: OperationType) {
 	func :: proc(block: ^Block, amount: rl.Vector3, add: bool, op: OperationType) {
 		switch(op) {
 			case .MOVE: MoveBlock(block, amount, add)
+			case .ROTATE: RotateBlock(block, amount, add)
 			case .RESIZE: ResizeBlock(block, amount, add)
 		}
 	}
@@ -156,7 +141,8 @@ HandleBlockData :: proc(args: []string, op: OperationType) {
 		def_val: rl.Vector3
 		switch(op) {
 			case .MOVE: def_val = block.pos
-			case .RESIZE: def_val = block.scale
+			case .ROTATE: def_val = block.rot
+			case .RESIZE: def_val = block.size
 		}
 	 	if(ok) do switch(args[1]) {
 			case "add": switch(args[2]) {
