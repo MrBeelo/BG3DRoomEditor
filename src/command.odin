@@ -103,8 +103,6 @@ ImportRoom :: proc(path: string) {
 		return
 	}
 	clear(&room.blocks)
-	//for block in new_room.bare_blocks do AppendBlock(block.pos, block.scale, .WALL)
-	//for trigger in new_room.bare_triggers do AppendBlock(trigger.pos, trigger.scale, .TRIGGER)
 	for jcube in jroom.jcubes do AppendBlock(jcube.pos, jcube.rot, jcube.size, jcube.type)
 	room.end_point = jroom.end_point
 	fmt.printf("GAME: Imported from %s\n", path)

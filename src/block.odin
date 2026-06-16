@@ -15,7 +15,6 @@ AppendBlock :: proc(pos: rl.Vector3 = {}, rot: rl.Vector3 = {}, size: rl.Vector3
 DrawBlocks :: proc() { for block in room.blocks do DrawBlock(block) }
 GetBlockOpacity :: proc(block: Block) -> u8 { return 255 if(block.type == .WALL) else 150 }
 
-//DrawBlock :: proc(block: Block) { rl.DrawModelEx(block_model, block.pos, {}, 0, block.scale, {190, 253, 255, GetBlockOpacity(block)} if(block.selected) else {255, 255, 255, GetBlockOpacity(block)}) }
 DrawBlock :: proc(block: Block) {
 	DrawModelPro(&block_model, block.pos, rot_rad(block.rot), block.size, {190, 253, 255, GetBlockOpacity(block)} if(block.selected) else {255, 255, 255, GetBlockOpacity(block)})
 }
