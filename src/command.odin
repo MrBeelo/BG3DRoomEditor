@@ -34,11 +34,11 @@ UpdateCommandMenu :: proc() {
 				case "trigger": AppendBlock({}, {}, 1, .TRIGGER)
 				case "export": ExportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
 				case "import": ImportRoom(strings.concatenate({DEF_PATH, args[1], ".json"}))
-				case "move": HandleBlockData(args, .MOVE)
-				case "rotate": HandleBlockData(args, .ROTATE)
-				case "resize": HandleBlockData(args, .RESIZE)
-				case "delete": #reverse for block, index in room.blocks do if(block.selected) do unordered_remove(&room.blocks, index)
-				case "duplicate": #reverse for block in GetSelectedBlocks() do AppendBlock(block.pos, block.rot, block.size, block.type)
+				case "move","pos": HandleBlockData(args, .MOVE)
+				case "rotate","rot": HandleBlockData(args, .ROTATE)
+				case "resize","size": HandleBlockData(args, .RESIZE)
+				case "delete","del": #reverse for block, index in room.blocks do if(block.selected) do unordered_remove(&room.blocks, index)
+				case "duplicate","dupe": #reverse for block in GetSelectedBlocks() do AppendBlock(block.pos, block.rot, block.size, block.type)
 				case "endpoint": HandleEndPoint(args)
 				case "select": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = true
 				case "deselect": if(len(args) == 1 || (len(args) == 2 && args[1] == "all")) do #reverse for &block in room.blocks do block.selected = false
